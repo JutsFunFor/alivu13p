@@ -31,6 +31,17 @@ set_property PULLUP true [get_ports {qsfp0_i2c_scl qsfp0_i2c_sda qsfp0_resetl}]
 set_property PULLUP true [get_ports {qsfp1_i2c_scl qsfp1_i2c_sda qsfp1_resetl}]
 set_property SLEW SLOW [get_ports {qsfp0_i2c_scl qsfp0_i2c_sda qsfp1_i2c_scl qsfp1_i2c_sda}]
 
+# Drive strength is not optional here. Bank 68 is a High Performance bank, and an HP bank
+# at LVCMOS12 supports 2, 4, 6 or 8 mA -- not the 12 mA a port defaults to. Leaving it at
+# the default fails DRC BIVB-1 before placement, naming these four ports. Only the
+# bidirectional pins are affected, because only they carry an output buffer whose drive
+# the tool resolves from the port.
+#
+# 8 mA is the most an HP bank will give at this voltage, and I2C only ever pulls low
+# against the board's pull-ups, so this sets how fast the falling edge is and nothing
+# else. SLOW slew above keeps that edge inside the I2C specification.
+set_property DRIVE 8 [get_ports {qsfp0_i2c_scl qsfp0_i2c_sda qsfp1_i2c_scl qsfp1_i2c_sda}]
+
 # Sideband is software-paced and asynchronous to every clock in the design.
 set_false_path -to   [get_ports {qsfp0_i2c_* qsfp0_resetl qsfp0_lpmode qsfp1_i2c_* qsfp1_resetl qsfp1_lpmode}]
 set_false_path -from [get_ports {qsfp0_i2c_* qsfp0_modprsl qsfp0_intl qsfp1_i2c_* qsfp1_modprsl qsfp1_intl}]
