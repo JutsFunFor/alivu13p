@@ -114,7 +114,6 @@ then silently does not work.
 | PCIe link LED | 1 | Drive each candidate and look at the board |
 | User LEDs | 8 | Drive each candidate and look at the board |
 | QSPI | 4-6 | Config-bank pins are largely fixed by the device; confirm against the flash part |
-| DDR4 | 4 channels × ~120 | The large one. Worth automating rather than probing by hand |
 | Main board I2C | 2 | Probe |
 | QSFP sideband (ModPrsL, IntL) | 2 per cage | Read back with and without a module inserted — presence detect is self-checking |
 
