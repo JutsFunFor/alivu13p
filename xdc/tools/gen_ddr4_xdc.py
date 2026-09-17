@@ -83,15 +83,17 @@ EMIT_ORDER = [
     ("Reset and command", ["reset_n", "act_n"]),
     ("Address and bank", ["adr", "ba", "bg"]),
     ("Control", ["cke", "cs_n", "odt", "ck_t"]),
-    ("Data", ["dq", "dqs_t"]),
+    ("Data", ["dq", "dqs_t", "dm_dbi_n"]),
 ]
 
-# Emitted commented out. The data mask pins are physically routed on the board, but the
-# MIG only exposes them when data masking is enabled -- and enabling ECC forces
-# NO_DM_NO_DBI, which is the configuration this board's memory is used in. Constraining a
-# port that does not exist produces a critical warning per pin and no error, so these stay
-# commented until a non-ECC configuration actually needs them.
-OPTIONAL_SIGNALS = ["dm_dbi_n"]
+# Nothing is emitted commented out any more. An earlier version of this script withheld
+# the data-mask pins, reasoning that enabling ECC forces NO_DM_NO_DBI and therefore
+# leaves the controller with no data-mask ports. Only the first half is true: the MIG
+# still presents c<n>_ddr4_dm_dbi_n as a 9-bit inout whatever the data-mask setting --
+# NO_DM_NO_DBI changes what the controller drives on those pins, not whether the port
+# exists. Checked against the instantiation template of a MIG customised exactly as this
+# board needs. The pins are routed, the port is there, so they are constrained.
+OPTIONAL_SIGNALS = []
 
 PIN_RE = re.compile(
     r"^\s*set_property\s+PACKAGE_PIN\s+(?P<pin>\S+)\s+"
@@ -180,26 +182,6 @@ def emit(channel: int, slr: int, pins: dict[tuple[str, int | None], str]) -> str
         for port, pin in rows:
             braced = "{" + port + "}" if "[" in port else port
             out.append(f"set_property PACKAGE_PIN {pin:<6} [get_ports {braced}]")
-
-    for sig in OPTIONAL_SIGNALS:
-        keys = sorted(
-            (k for k in pins if k[0] == sig),
-            key=lambda k: (k[1] is not None, k[1] if k[1] is not None else -1),
-        )
-        if not keys:
-            continue
-        out.append(
-            "\n# Data mask -- commented out on purpose.\n"
-            "#\n"
-            "# These pins are routed on the board, but the MIG only exposes dm_dbi_n when\n"
-            "# data masking is enabled, and enabling ECC forces NO_DM_NO_DBI. This board's\n"
-            "# memory is used with ECC, so the ports do not exist and constraining them\n"
-            "# would raise a critical warning per pin. Uncomment for a non-ECC build."
-        )
-        for key in keys:
-            port = f"c{channel}_ddr4_{sig}[{key[1]}]"
-            out.append(f"# set_property PACKAGE_PIN {pins[key]:<6} [get_ports {{{port}}}]")
-            emitted.add(key)
 
     missing = set(pins) - emitted
     if missing:

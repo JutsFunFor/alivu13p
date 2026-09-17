@@ -92,11 +92,13 @@ rather than a plausible one:
 | ODT / output impedance | RZQ/6 / RZQ/7 |
 | Burst | length 8, sequential, `RD_PRI_REG` arbitration |
 
-Note the interaction between the last two rows of the memory configuration: **enabling
-ECC forces `NO_DM_NO_DBI`**, so the controller has no data-mask ports at all. The DM pins
-are physically routed on this board and are recorded in `xdc/ddr4_c[0-3].xdc`, but
-commented out — constraining a port that does not exist costs a critical warning per pin
-and buys nothing. Uncomment them only for a non-ECC build.
+Note the interaction between the last two rows: **enabling ECC forces `NO_DM_NO_DBI`**,
+because the controller cannot mask part of a write and maintain check bits over it.
+
+That changes what the controller *drives*, not the port list. `c*_ddr4_dm_dbi_n` is still
+present as a 9-bit inout whatever the data-mask setting says — checked against the
+instantiation template of a MIG customised exactly this way. Those pins are routed on
+this board, so `xdc/ddr4_c[0-3].xdc` constrains all 117 per channel, data mask included.
 
 The reference clock is per channel and runs at ~400 MHz, which is distinct from the
 100 MHz board clock on AY23.
@@ -114,7 +116,7 @@ calibration is observable even in a design containing no ILA.
 That result also validates the pin assignment itself: these exact pins drive four working
 memory channels on this board.
 
-## PCIe reference clock — measured
+## PCIe — measured and cross-checked
 
 Measured with `designs/00_clk_probe`, which counts twelve candidate reference clocks at
 once against the 100 MHz board clock (2026-09-17).
@@ -142,6 +144,45 @@ Two candidates report implausible values: 2.03 MHz and 294.9 MHz. An unconnected
 differential GT input is not held anywhere, so its buffer output drifts and oscillates,
 and a frequency counter dutifully counts the result. Read those as "nothing connected",
 not as a clock. It is the reason this design carries controls.
+
+### PERST, and the one pin the device names for you
+
+`AR26` is not a guess among general-purpose pins: the device's own pin function for it is
+`IO_T3U_N12_PERSTN0_65` — the silicon calls it PERST. (`AN27` is `PERSTN1`, doubling as
+`I2C_SDA`.) A pin the part names for the job is much stronger evidence than a plausible
+general-purpose pin would be.
+
+The I/O standard is the weak link. Bank 65's VCCO cannot be read out of the part, and
+PERST is the only signal placed in that bank here, so there is no second port to
+cross-check against — `LVCMOS12` is asserted by analogy with bank 64 next door. If it is
+wrong the endpoint never leaves reset and never enumerates, which makes host enumeration
+itself the test of this line.
+
+### Lane mapping — from the device, not the board
+
+The PCIE40E4 hard block is wired to a fixed set of transceiver channels, so the block
+location plus the link width determine the lane placement completely. For `X0Y1` at x16
+the result is banks 227, 226, 225, 224 and channels `GTYE4_CHANNEL_X1Y31` down to
+`X1Y16`, lane *n* on channel `X1Y(31-n)`.
+
+Two properties make that mapping trustworthy without probing anything. Every lane's RX
+and TX pins resolve to the *same* channel site, which is a sixteen-way consistency check
+that a mis-transcribed list would fail; and the sixteen channels run monotonically with
+no gap, where an error would show a discontinuity. Both are checked mechanically by
+`xdc/tools/validate_pins.py`.
+
+The full table is at the end of `xdc/pcie.xdc`, deliberately commented out. Constraining
+the lanes as well as the block location creates a second source of truth that has to
+agree with the first forever, and when they disagree the tool obeys the constraints and
+the link fails.
+
+### Device ID
+
+The XDMA IP derives its PCI device ID from the link configuration. x16 Gen3 gives
+**`0x903F`**; `0x9038` is the x8 Gen3 value. The distinction matters because the host
+driver binds on the ID and silently ignores anything outside its table — which presents
+exactly like the card being absent. `0x903f` is in the table shipped with the Xilinx
+XDMA driver (`XDMA/linux-kernel/xdma/xdma_mod.c`), so nothing needs patching.
 
 ### Trusting the measurement
 
@@ -171,14 +212,30 @@ These are needed by designs not yet written. They are listed as open rather than
 assumed, because an unverified pin assignment produces a design that builds cleanly and
 then silently does not work.
 
-| Signal group | Pins needed | How to establish |
-|---|---|---|
-| PCIe PERST | 1 | Probe, or infer from which candidate lets the endpoint come out of reset |
-| PCIe link LED | 1 | Drive each candidate and look at the board |
-| User LEDs | 8 | Drive each candidate and look at the board |
-| QSPI | 4-6 | Config-bank pins are largely fixed by the device; confirm against the flash part |
-| Main board I2C | 2 | Probe |
-| QSFP sideband (ModPrsL, IntL) | 2 per cage | Read back with and without a module inserted — presence detect is self-checking |
+| Signal group | Pins | State | How to settle it |
+|---|---|---|---|
+| User LEDs | 8, bank 64 | assigned, not yet observed | `designs/01_golden_pcie` walks a bit across them — watch the card |
+| PCIe link LED | `BD20` | assigned, not yet observed | driven from `user_lnk_up`; lights when the link trains |
+| QSFP ModPrsL / IntL | 2 per cage, bank 68 | assigned, not yet observed | read back with and without a module inserted — presence detect is self-checking |
+| Main board I2C | 2 | **unknown** | see below |
+| QSPI | — | not needed as pins | the config bank is fixed by the device and `axi_quad_spi` reaches it through `STARTUPE3`; what is still unknown is the flash part |
+
+### Main board I2C is genuinely unknown
+
+Worth stating plainly, because a plausible-looking answer is in circulation. A board
+constraint file found in the wild assigns `main_iic` to `BD8`/`BC12` — which are the
+bank-68 pins belonging to **cage 1's module I2C**, with SCL and SDA swapped relative to
+that use as well. Its own author left a note saying the binding was wrong and that the
+optical interface's I2C was being borrowed as a stopgap.
+
+Two independent readings agree that `BD8`/`BC12` belong to the cage: each cage has a
+complete, non-overlapping six-signal sideband group in bank 68, and cage 1's group is
+only complete if those two pins are its I2C. So this repository assigns them to the cage
+and leaves the main bus unassigned rather than carrying a known-wrong constraint that
+would collide the moment both were used.
+
+`xdc/tools/validate_pins.py` checks for exactly this class of mistake — one package pin
+claimed by two different ports — across every file in `xdc/`.
 
 ### Method
 

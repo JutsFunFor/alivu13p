@@ -129,19 +129,12 @@ set_property PACKAGE_PIN AV21   [get_ports {c1_ddr4_dqs_t[5]}]
 set_property PACKAGE_PIN AW25   [get_ports {c1_ddr4_dqs_t[6]}]
 set_property PACKAGE_PIN AL17   [get_ports {c1_ddr4_dqs_t[7]}]
 set_property PACKAGE_PIN AM26   [get_ports {c1_ddr4_dqs_t[8]}]
-
-# Data mask -- commented out on purpose.
-#
-# These pins are routed on the board, but the MIG only exposes dm_dbi_n when
-# data masking is enabled, and enabling ECC forces NO_DM_NO_DBI. This board's
-# memory is used with ECC, so the ports do not exist and constraining them
-# would raise a critical warning per pin. Uncomment for a non-ECC build.
-# set_property PACKAGE_PIN AT19   [get_ports {c1_ddr4_dm_dbi_n[0]}]
-# set_property PACKAGE_PIN BE17   [get_ports {c1_ddr4_dm_dbi_n[1]}]
-# set_property PACKAGE_PIN BF14   [get_ports {c1_ddr4_dm_dbi_n[2]}]
-# set_property PACKAGE_PIN AV26   [get_ports {c1_ddr4_dm_dbi_n[3]}]
-# set_property PACKAGE_PIN BF28   [get_ports {c1_ddr4_dm_dbi_n[4]}]
-# set_property PACKAGE_PIN AY17   [get_ports {c1_ddr4_dm_dbi_n[5]}]
-# set_property PACKAGE_PIN BA25   [get_ports {c1_ddr4_dm_dbi_n[6]}]
-# set_property PACKAGE_PIN AN18   [get_ports {c1_ddr4_dm_dbi_n[7]}]
-# set_property PACKAGE_PIN AP25   [get_ports {c1_ddr4_dm_dbi_n[8]}]
+set_property PACKAGE_PIN AT19   [get_ports {c1_ddr4_dm_dbi_n[0]}]
+set_property PACKAGE_PIN BE17   [get_ports {c1_ddr4_dm_dbi_n[1]}]
+set_property PACKAGE_PIN BF14   [get_ports {c1_ddr4_dm_dbi_n[2]}]
+set_property PACKAGE_PIN AV26   [get_ports {c1_ddr4_dm_dbi_n[3]}]
+set_property PACKAGE_PIN BF28   [get_ports {c1_ddr4_dm_dbi_n[4]}]
+set_property PACKAGE_PIN AY17   [get_ports {c1_ddr4_dm_dbi_n[5]}]
+set_property PACKAGE_PIN BA25   [get_ports {c1_ddr4_dm_dbi_n[6]}]
+set_property PACKAGE_PIN AN18   [get_ports {c1_ddr4_dm_dbi_n[7]}]
+set_property PACKAGE_PIN AP25   [get_ports {c1_ddr4_dm_dbi_n[8]}]

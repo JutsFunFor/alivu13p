@@ -58,16 +58,27 @@ cd host
 Point it at a driver tree with `XDMA_SRC=/path/to/dma_ip_drivers/XDMA/linux-kernel` if
 it is not the submodule in `third_party/`.
 
-The driver binds on Xilinx vendor ID `0x10ee` and its ID table already covers the XDMA
-Gen3 x16 default device ID `0x9038`, so no ID patching is needed for a stock
-configuration.
+The driver binds on Xilinx vendor ID `0x10ee` plus a device ID, and the XDMA IP derives
+that ID from the link configuration. **Gen3 x16 gives `0x903F`**; `0x9038` is the Gen3 x8
+value, so quoting it for a x16 design is a common and confusing mistake — the driver
+silently ignores a device outside its table, which looks exactly like the card being
+absent rather than like a mismatch.
+
+Both IDs are in the table shipped with the driver, so no patching is needed either way.
+`designs/01_golden_pcie` prints the ID it configured during the build; compare it with
+what `lspci -d 10ee: -nn` reports.
 
 ## Address maps are per-design
 
-There is no such thing as "the" BAR layout for a board. Each design's AXI-Lite map comes
-from its own address editor, and two designs on the same card will happily put GPIO at
-different offsets. Always take the map from the design you actually loaded — a register
-write to the wrong offset is silent, not an error.
+There is no such thing as "the" BAR layout for a board. Two designs on the same card will
+happily put GPIO at different offsets. Always take the map from the design you actually
+loaded — a register write to the wrong offset is silent, not an error, and a read from an
+unmapped address returns zeroes or ones rather than failing, so a wrong base address
+presents as broken hardware instead of a wrong constant.
+
+For that reason the maps live in `host/alivu13p/memmap.py` as data rather than being
+spread through the test code as literals. Each one mirrors the crossbar parameters in its
+design's `tcl/prj.tcl`; check the two together if a window ever moves.
 
 Each design in `designs/` documents its own map in its README.
 

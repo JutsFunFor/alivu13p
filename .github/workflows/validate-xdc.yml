@@ -1,0 +1,34 @@
+name: validate constraints
+
+# Pin constraints are claims about how the board is wired, and a wrong one does not fail
+# a build -- it produces a bitstream that works perfectly except that it does not. This
+# runs the same checks a person would run locally, on every change, without needing
+# Vivado: the device's package pin database is committed alongside the checker.
+
+on:
+  push:
+    paths: ['xdc/**', '.github/workflows/validate-xdc.yml']
+  pull_request:
+    paths: ['xdc/**', '.github/workflows/validate-xdc.yml']
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pytest
+        run: pip install pytest
+
+      # First: prove the checker still detects the faults it claims to. A validator that
+      # has only ever passed is not evidence of anything -- it might be matching nothing.
+      # Each case feeds it a constraint file with one deliberate defect.
+      - name: Check the checker
+        run: python3 -m pytest xdc/tools/tests/ -v
+
+      - name: Check every pin assignment against the device
+        run: python3 xdc/tools/validate_pins.py xdc/

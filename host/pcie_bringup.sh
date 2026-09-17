@@ -13,11 +13,13 @@ set -u
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 XDMA=${XDMA_SRC:-$REPO/third_party/dma_ip_drivers/XDMA/linux-kernel}
-# BAR addresses come from the block design's address editor (01_golden_pcie):
-#   M_AXI      BRAM        0xC000_0000  64K   -> DMA target
-#   M_AXI_LITE QSPI        0x0001_0000  64K
-#   M_AXI_LITE GPIO/LED    0x0003_0000  64K
-#   M_AXI_LITE debug bridge0x0004_0000  64K   -> XVC
+# Addresses for designs/01_golden_pcie. They are the crossbar parameters in that
+# design's tcl/prj.tcl, and the same numbers appear in host/alivu13p/memmap.py --
+# check all three together if a window ever moves.
+#   DMA       BRAM          0xC000_0000  64K
+#   DMA       URAM          0xC001_0000  64K
+#   register  GPIO / LEDs   0x0003_0000
+#   register  debug bridge  0x0004_0000  -> XVC, the driver's default xvc_bar_offset
 GPIO_OFF=0x30000
 BRAM_SIZE=$((64*1024))
 

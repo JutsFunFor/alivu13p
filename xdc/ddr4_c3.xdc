@@ -129,19 +129,12 @@ set_property PACKAGE_PIN J21    [get_ports {c3_ddr4_dqs_t[5]}]
 set_property PACKAGE_PIN R16    [get_ports {c3_ddr4_dqs_t[6]}]
 set_property PACKAGE_PIN H17    [get_ports {c3_ddr4_dqs_t[7]}]
 set_property PACKAGE_PIN P24    [get_ports {c3_ddr4_dqs_t[8]}]
-
-# Data mask -- commented out on purpose.
-#
-# These pins are routed on the board, but the MIG only exposes dm_dbi_n when
-# data masking is enabled, and enabling ECC forces NO_DM_NO_DBI. This board's
-# memory is used with ECC, so the ports do not exist and constraining them
-# would raise a critical warning per pin. Uncomment for a non-ECC build.
-# set_property PACKAGE_PIN H19    [get_ports {c3_ddr4_dm_dbi_n[0]}]
-# set_property PACKAGE_PIN D19    [get_ports {c3_ddr4_dm_dbi_n[1]}]
-# set_property PACKAGE_PIN G14    [get_ports {c3_ddr4_dm_dbi_n[2]}]
-# set_property PACKAGE_PIN D13    [get_ports {c3_ddr4_dm_dbi_n[3]}]
-# set_property PACKAGE_PIN N17    [get_ports {c3_ddr4_dm_dbi_n[4]}]
-# set_property PACKAGE_PIN L17    [get_ports {c3_ddr4_dm_dbi_n[5]}]
-# set_property PACKAGE_PIN P13    [get_ports {c3_ddr4_dm_dbi_n[6]}]
-# set_property PACKAGE_PIN L13    [get_ports {c3_ddr4_dm_dbi_n[7]}]
-# set_property PACKAGE_PIN R21    [get_ports {c3_ddr4_dm_dbi_n[8]}]
+set_property PACKAGE_PIN H19    [get_ports {c3_ddr4_dm_dbi_n[0]}]
+set_property PACKAGE_PIN D19    [get_ports {c3_ddr4_dm_dbi_n[1]}]
+set_property PACKAGE_PIN G14    [get_ports {c3_ddr4_dm_dbi_n[2]}]
+set_property PACKAGE_PIN D13    [get_ports {c3_ddr4_dm_dbi_n[3]}]
+set_property PACKAGE_PIN N17    [get_ports {c3_ddr4_dm_dbi_n[4]}]
+set_property PACKAGE_PIN L17    [get_ports {c3_ddr4_dm_dbi_n[5]}]
+set_property PACKAGE_PIN P13    [get_ports {c3_ddr4_dm_dbi_n[6]}]
+set_property PACKAGE_PIN L13    [get_ports {c3_ddr4_dm_dbi_n[7]}]
+set_property PACKAGE_PIN R21    [get_ports {c3_ddr4_dm_dbi_n[8]}]
