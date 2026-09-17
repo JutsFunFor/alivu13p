@@ -31,11 +31,12 @@ Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC 
 | Optical / AOC modules | 🚫 | — | only a passive DAC is available. DACs link regardless of ResetL, so the module-control path cannot be proven here |
 | System clock 100 MHz (AY23/BA23) | ✅ | `designs/03_qsfp_ibert` | drives the IBERT debug hub; design builds and meets timing |
 | PCIe Gen3 x16 (XDMA) | ❌ | — | design not yet written |
-| PCIe refclk / PERST / link LED pins | ❓ | — | must be established on hardware — see below |
+| PCIe refclk pin | ❓ | — | narrowed to 8 candidates by the device (banks 224-227 × MGTREFCLK0/1). `AK11`/`AK10` = `MGTREFCLK1P/N_226` is one. Needs measuring |
+| PCIe PERST / link LED pins | ❓ | — | must be probed on hardware |
 | BRAM over DMA | ❌ | — | — |
 | URAM over DMA | ❌ | — | — |
 | DDR4 channels 0-3 (16 GB) | ❌ | — | design not yet written |
-| DDR4 pinout | ❓ | — | not established here. 4 channels × ~120 pins must be determined before a MIG can be built |
+| DDR4 pinout, 4 channels | ⚙️ | `xdc/ddr4_c[0-3].xdc` | 468 pins derived from the board vendor's reference project via `xdc/tools/gen_ddr4_xdc.py`. Not yet exercised on hardware |
 | DDR4 calibration status | ❌ | — | — |
 | AXI-Lite GPIO / user LEDs | ❓ | — | LED pin assignments not established here |
 | QSPI flash | ❓ | — | — |
@@ -44,6 +45,37 @@ Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC 
 | 100G NIC | ❌ | — | separate repository, not yet started |
 
 ## What is established, and how
+
+### PCIe hard blocks — from the device
+
+Four `PCIE40E4` sites, one per SLR: `X0Y0`=SLR0, `X0Y1`=SLR1, `X0Y2`=SLR2, `X0Y3`=SLR3.
+A x16 endpoint consumes four adjacent GTY quads in its own SLR, so the choice of hard
+block fixes which quads and therefore which reference clocks are reachable — 8 candidate
+pin pairs per block. For `X0Y1` those are banks 224-227:
+
+| Bank | MGTREFCLK0 (P/N) | MGTREFCLK1 (P/N) |
+|---|---|---|
+| 224 | AW9 / AW8 | AV11 / AV10 |
+| 225 | AT11 / AT10 | AP11 / AP10 |
+| 226 | AM11 / AM10 | **AK11 / AK10** |
+| 227 | AH11 / AH10 | AF11 / AF10 |
+
+Which of the eight the board actually wires is a measurement, not a choice — see below.
+
+### DDR4 — from the board vendor's reference project
+
+| Channel | SLR | Refclk | `reset_n` | `act_n` |
+|---|---|---|---|---|
+| c0 | SLR0 | AE31 | Y32 | Y31 |
+| c1 | SLR1 | AW14 | AL15 | AR13 |
+| c2 | SLR2 | J26 | B29 | A28 |
+| c3 | SLR3 | G25 | B24 | A22 |
+
+All four are 72-bit: `MT40A512M16JY-083E` for [63:0] plus `MT40A1G8WE-083E` for the
+[71:64] ECC lane. Channel numbering is pinned to the SLR, since physical placement is
+what matters when floorplanning four controllers across a four-die part.
+
+### QSFP / GTY — measured
 
 The GTY side is settled because the IBERT design both queries the part and runs against
 the real clocks:

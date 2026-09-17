@@ -29,6 +29,18 @@ Additional dependencies are added as the designs that need them land. Anything d
 from Alex Forencich's `verilog-ethernet` / `verilog-pcie` family is MIT and will be
 pulled as a submodule rather than copied, so upstream history and licence stay intact.
 
+## Board vendor reference material
+
+`xdc/ddr4_c[0-3].xdc` are derived from the ALIVU13P board vendor's own Vivado reference
+project (`XCVU13P_DDR4.zip`), which ships with the hardware and contains a four-channel
+DDR4 test design. The derivation is performed by `xdc/tools/gen_ddr4_xdc.py`, kept
+in-tree so it is reproducible and auditable: it renames ports to the Xilinx MIG external
+interface convention and reorganises them, and reproduces the package pin assignments
+unchanged, those being facts about how the board is wired.
+
+The vendor archive is not redistributed here. To regenerate, extract your own copy and
+point the script at it.
+
 ## Acknowledgements
 
 - **Alex Forencich** — `vivado.mk`, and the open-source Verilog Ethernet/PCIe libraries
