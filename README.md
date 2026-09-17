@@ -7,8 +7,11 @@ The card is available second-hand, and undocumented. This repository
 brings it up on a current toolchain and keeps an honest record of which interfaces have
 actually been proven to work, with the evidence attached.
 
+![](board.png)
+
+
 **Start at [STATUS.md](STATUS.md).** Every interface, its state, what was observed, and
-when. Nothing is marked verified because it compiled.
+when.
 
 ## What the board has
 
