@@ -13,6 +13,8 @@ vivado -nojournal -nolog -mode batch -source tools/<script>.tcl -tclargs <args>
 | `program.tcl` | `<target> <file.bit> [file.ltx]` | programs a device and checks DONE |
 | `check_ddr4_bist.tcl` | `<target> <ddr4_cal.ltx>` | starts a fresh four-channel memory test; rejects stale results and returns nonzero on failure |
 | `check_ddr4_cal.tcl` | `<target>` | per-channel DDR4 calibration status |
+| `bitstream_info.py` | `<file.bit> ...` | what a bitstream says about itself: top module, exact part, build time, tool version |
+| `release.py` | `--tag <tag> [--dry-run]` | publish the built bitstreams as a GitHub release |
 
 ## Why the target is never defaulted
 
@@ -40,3 +42,29 @@ reads it over the debug hub.
 
 It waits before reading, deliberately: calibration runs at configuration time and takes a
 moment, so refreshing immediately reports "still in progress" on a design that is fine.
+
+## Publishing bitstreams
+
+Bitstreams are build outputs: tens of megabytes, different on every rebuild, and nothing
+about them is reviewable. They do not belong in git. But someone who wants to try this
+board should not have to install Vivado and wait an hour to find out whether it
+enumerates, so `release.py` ships them as GitHub release assets instead.
+
+```sh
+python3 tools/release.py --tag v0.2 --dry-run    # exactly what would be published
+python3 tools/release.py --tag v0.2 --draft      # a draft, visible only to you
+python3 tools/release.py --tag v0.2
+```
+
+It refuses to publish a bitstream older than a file it was built from -- an edit to a
+shared constraint invalidates every design that reads it, and shipping the old binary
+under a new tag is how a release comes to describe something that was never built.
+`--allow-stale` overrides that and marks the affected designs in the notes rather than
+quietly omitting the fact.
+
+Which shared files a design depends on is read out of its own build scripts, not assumed.
+A QSFP constraint edit does not invalidate the clock probe, and a check that claimed
+otherwise would be ignored within a week.
+
+The notes table is filled in from the artifacts themselves: top module, part and build
+time come from each `.bit` header, and the timing numbers from that build's own report.

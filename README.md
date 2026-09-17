@@ -53,9 +53,31 @@ third_party/ external dependencies (submodules)
 | `designs/01_golden_pcie` | PCIe Gen3 x16: host enumeration, DMA to block RAM and to UltraRAM, register access, interrupts, and JTAG over the PCIe link |
 | `designs/02_ddr4_cal` | All four DDR4 channels calibrate and store data, with no host involved |
 | `designs/03_qsfp_ibert` | QSFP28 physical path — per-lane link, eye scan and BER across both cages, in Hardware Manager |
+| `designs/04_pcie_ddr4` | PCIe DMA straight into 4 GiB of ECC DDR4 — the full aperture written and verified from the host |
+| `designs/05_pcie_stream` | PCIe AXI-Stream: packet boundaries, byte-valid masks and backpressure, with no memory in the path |
+| `designs/06_board_mgmt` | What the board *is*: the configuration flash's JEDEC ID, and each QSFP module's SFF-8636 identity over I2C |
 
 Each has its own README explaining what it tests and how to read the result. See
 [STATUS.md](STATUS.md) for which have been run on hardware.
+
+## Prebuilt bitstreams
+
+Every design's `.bit` is published on the [releases
+page](https://github.com/JutsFunFor/alivu13p/releases), so the board can be tried without
+installing Vivado. Each release's notes are generated from the artifacts themselves --
+top module, exact part, build time and tool version read out of the bitstream header,
+timing numbers from that build's report -- and `SHA256SUMS` covers every file.
+
+```sh
+vivado -mode batch -source tools/jtag_scan.tcl        # find the target string
+vivado -mode batch -source tools/program.tcl -tclargs <target> 01_golden_pcie.bit
+python3 tools/bitstream_info.py 01_golden_pcie.bit    # what the file says it is
+```
+
+They are not in git: a bitstream is a build output, it is tens of megabytes, it changes
+on every rebuild, and no one can review it. `tools/release.py` builds a release from
+whatever is currently built, and refuses to publish one that is older than a source file
+it was built from.
 
 ## Constraints are checked, not trusted
 
