@@ -193,7 +193,19 @@ def notes(entries: list[dict], tag: str, commit: str) -> str:
                       "correspond exactly to this tag:", ""]
         lines += [f"- `{e['design']}` — `{e['stale_because']}` changed after the build"
                   for e in stale]
+    built = {e["design"] for e in entries}
+    missing = sorted(d.name for d in (REPO / "designs").iterdir()
+                     if d.is_dir() and d.name not in built)
+    if missing:
+        lines += ["", "Not in this release, because nothing built them into a bitstream "
+                      "on the machine that cut it: " + ", ".join(f"`{m}`" for m in missing)
+                      + ". Build one with its own `compile.sh`."]
     lines += [
+        "",
+        "**Building clean is not the same as working.** Every design here implements with "
+        "timing met, but only some have been run on the board. "
+        "[STATUS.md](https://github.com/JutsFunFor/alivu13p/blob/main/STATUS.md) is the "
+        "one place that says which, and what the evidence was.",
         "",
         "## Programming one",
         "",
