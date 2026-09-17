@@ -67,6 +67,22 @@ Four independent channels, one per SLR, each 72 bits wide: `MT40A512M16JY-083E` 
 
 Full pin assignment is in `xdc/ddr4_c[0-3].xdc`, 117 pins per channel.
 
+The channel-to-SLR mapping is not just a naming convention taken from the reference
+project — it is confirmed from an implemented design. In `designs/02_ddr4_cal`, each
+channel's I/O *and* all of its controller logic land in the matching SLR, roughly 49,700
+cells per channel with no spillover across die boundaries:
+
+| Channel | I/O lands in | Controller logic lands in |
+|---|---|---|
+| c0 | SLR0 | SLR0 |
+| c1 | SLR1 | SLR1 |
+| c2 | SLR2 | SLR2 |
+| c3 | SLR3 | SLR3 |
+
+That matters for anything built on top of this. A design that also has to reach PCIe --
+whose hard block sits in SLR1 -- is crossing die boundaries to get to three of the four
+memory channels, and SLR crossings are a fixed, limited resource with their own latency.
+
 **All four channels calibrate on this board** (2026-09-17). Verified by loading the board
 vendor's four-channel reference bitstream and reading the MIG calibration engines over
 JTAG: every channel reports `CALIBRATION_FAIL.STATUS = FALSE`, failing stage `NONE`, and

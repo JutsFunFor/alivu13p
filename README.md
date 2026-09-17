@@ -25,9 +25,9 @@ when. Nothing is marked verified because it compiled.
 
 ```
 designs/     FPGA designs, one directory per interface under test
-common/      shared build system
+common/      shared Vivado makefile, for designs that build on upstream Verilog libraries
 xdc/         board constraints, established by measurement
-host/        host-side software: driver patches, bring-up and test tooling
+host/        host-side software: bring-up script, Python package, pytest suite
 docs/        toolchain notes, PCIe bring-up, measured board facts
 third_party/ external dependencies (submodules)
 ```
@@ -36,17 +36,39 @@ third_party/ external dependencies (submodules)
 
 - **Vivado 2025.2.** The build system takes `vivado` from `PATH` — override with
   `make VIVADO=/path/to/vivado`.
-- **Linux host** for the PCIe work. The Xilinx XDMA driver needs
-  `host/patches/xdma-kernel-6.8.patch` on kernel 6.3 and newer.
+- **Linux host** for the PCIe work. The Xilinx XDMA driver in `third_party/` builds
+  unpatched on kernel 6.8 — current upstream already carries the guards that older
+  advice says you have to add.
+- **Python 3** and `pytest` for the host tests. Nothing else; the package under
+  `host/alivu13p/` has no dependencies.
 
 ## Designs
 
 | Design | What it proves |
 |---|---|
+| `designs/00_clk_probe` | Which candidate reference clocks actually have an oscillator behind them — twelve measured at once, four of them known-state controls |
+| `designs/01_golden_pcie` | PCIe Gen3 x16: host enumeration, DMA to block RAM and to UltraRAM, register access, interrupts, and JTAG over the PCIe link |
+| `designs/02_ddr4_cal` | All four DDR4 channels calibrate and store data, with no host involved |
 | `designs/03_qsfp_ibert` | QSFP28 physical path — per-lane link, eye scan and BER across both cages, in Hardware Manager |
 
-More are in progress; see [STATUS.md](STATUS.md) for what is built and what is still
-being established.
+Each has its own README explaining what it tests and how to read the result. See
+[STATUS.md](STATUS.md) for which have been run on hardware.
+
+## Constraints are checked, not trusted
+
+A pin constraint is a claim about how the board is wired, and a wrong claim does not fail
+the build — it produces a bitstream that implements cleanly, meets timing, and then does
+not work. Since this board ships with no documentation, every assignment in `xdc/` is
+checked mechanically against the device's own package database:
+
+```bash
+python3 xdc/tools/validate_pins.py xdc/
+```
+
+It catches pins that do not exist, a pin claimed by two different ports, a bank asked to
+be two voltages at once, a mis-paired differential half, and a transceiver lane whose RX
+and TX land on different channels. It runs in CI on every change to `xdc/`, and needs no
+Vivado installation. See [xdc/README.md](xdc/README.md).
 
 ## The PCIe gotcha that catches everyone
 

@@ -100,6 +100,16 @@ set_property PACKAGE_PIN BF22 [get_ports {qsfp_led_g[1]}]
 set_property IOSTANDARD LVCMOS12 [get_ports {qsfp_led_y[*] qsfp_led_g[*]}]
 set_false_path -to [get_ports {qsfp_led_y[*] qsfp_led_g[*]}]
 
+# ===================================================================== using this file
+# This file constrains every signal of both cages, so a design that adds it must declare
+# all of them. A `set_property` or `set_false_path` whose `get_ports` matches nothing is
+# a critical warning rather than an error, so a design that declares only some of these
+# ports builds anyway -- with a dozen warnings nobody reads and the undeclared pins
+# silently falling to UNUSEDPIN, which is exactly the trap described below.
+#
+# Split this file rather than declaring ports a design has no use for, if it ever comes
+# to that.
+
 # ========================================================================= the trap
 # ResetL is active low, and an undeclared pin falls to BITSTREAM.CONFIG.UNUSEDPIN, which
 # defaults to Pulldown. A design that does not declare these ports therefore holds both
