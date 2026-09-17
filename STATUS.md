@@ -51,8 +51,14 @@ Latest: [DDR4 and PCIe validation after warm reboot](docs/validation-2026-09-17.
 | DDR4 calibration readout | ✅ | Hardware Manager | `get_hw_migs` reports all 4 cores and per-stage status over JTAG, with no `.ltx` required |
 | AXI-Lite GPIO / user LEDs | ⚠️ | `designs/01_golden_pcie` | GPIO data readback and walking bits pass from host (2026-09-17); physical LED illumination still needs visual confirmation |
 | User interrupts | ✅ | `designs/01_golden_pcie` | Host asserts GPIO channel 2, receives MSI through `/dev/xdma0_events_0`, then deasserts request (2026-09-17) |
+| PCIe DMA to DDR4 | ⚙️ | `designs/04_pcie_ddr4` | XDMA reaching all 4 GiB of channel 1 through an asynchronous AXI clock converter. Builds clean (WNS +0.223 ns, WHS +0.010 ns); not yet run on hardware |
+| DDR4 ECC | ⚙️ | `designs/04_pcie_ddr4` | 72-bit interface, ECC enabled and both interrupt classes armed by an on-chip AXI-Lite sequencer. Latched ECC events are reported in the design's status register; nothing has exercised them yet |
+| PCIe AXI-Stream packets | ⚙️ | `designs/05_pcie_stream` | H2C into a 64 KiB stream FIFO and back out on C2H, keeping TLAST and TKEEP. Builds clean (WNS +0.185 ns, WHS +0.010 ns); not yet run on hardware |
+| QSFP module I2C | ⚙️ | `designs/06_board_mgmt` | one AXI IIC per cage at 100 kHz, host-driven over the BAR. Builds clean; no module EEPROM read yet |
+| QSFP module presence / IntL | ⚙️ | `designs/06_board_mgmt` | `ModPrsL` and `IntL` synchronized into a GPIO input channel. Self-checking against I2C: a cage that reports empty must also be silent at address 0x50 |
+| QSFP ResetL / LPMode defaults | ⚙️ | `designs/06_board_mgmt` | sideband GPIO resets to `0x05` — both `ResetL` high, both `LPMode` low — at configuration, with no host software involved |
 | XVC (JTAG over PCIe) | ⚙️ | `designs/01_golden_pcie` | debug bridge at `0x0004_0000`, which is already the driver's default `xvc_bar_offset` |
-| QSPI flash | ❓ | — | needs no pin constraints — the config bank is fixed and `axi_quad_spi` reaches it through `STARTUPE3`. The flash part is still unidentified |
+| QSPI flash | ⚙️ | `designs/06_board_mgmt` | needs no pin constraints — the config bank is fixed and `axi_quad_spi` reaches it through `STARTUPE3`. The part is still unidentified, but there is now a design that asks it: a JEDEC ID read over the BAR. That also tests the `SPI_32BIT_ADDR` assumption in `xdc/bitstream.xdc`, which nothing had checked |
 | XDMA driver build on kernel 6.8 | ✅ | `third_party/dma_ip_drivers` | builds clean **unpatched** on 6.8.0-138 (2026-09-17). Current upstream already carries the 6.3/6.4 guards; no patch needed |
 | Main board I2C | ❓ | — | genuinely unknown. The assignment in circulation points at cage 1's I2C pins with SCL/SDA swapped; see [docs/board-facts.md](docs/board-facts.md) |
 | Board pin assignments | ✅ | `xdc/` | 534 assignments checked against the device package database — existence, role, collisions, bank voltage, differential pairing, transceiver lane consistency. Runs in CI |
@@ -137,6 +143,9 @@ be right.
 | `designs/01_golden_pcie` | ✅ | WNS +0.165 ns, WHS +0.010 ns, 0 critical warnings. No block design — every IP is created from the live catalog in `tcl/prj.tcl` |
 | `designs/02_ddr4_cal` | ✅ | WNS +0.049 ns, WHS +0.010 ns, 0 critical warnings. Setup margin is thin at 49 ps — worth watching if anything is added |
 | `designs/03_qsfp_ibert` | ✅ | `import_ip` + explicit `upgrade_ip`, so it survives IP version changes; writes its own `.ltx` |
+| `designs/04_pcie_ddr4` | ✅ | WNS +0.223 ns, WHS +0.010 ns. One MIG plus a x16 endpoint in the same SLR |
+| `designs/05_pcie_stream` | ✅ | WNS +0.185 ns, WHS +0.010 ns. No memory in the design at all |
+| `designs/06_board_mgmt` | ✅ | WNS +0.207 ns, WHS +0.010 ns. Its timing exceptions are excluded from synthesis: Vivado 2025.2 segfaults applying them there, reproducibly, with the stack inside its own timing engine |
 
 ## Toolchain notes
 
