@@ -58,6 +58,22 @@ GOLDEN_PCIE = DesignMap(
     ),
 )
 
+# designs/06_board_mgmt -- mirrors the crossbar address parameters in its tcl/prj.tcl.
+# The BRAM window is deliberately identical to the golden design's, so the DMA tests do
+# not care which of the two is loaded.
+BOARD_MGMT = DesignMap(
+    design="06_board_mgmt",
+    windows=(
+        Window("bram", 0xC000_0000, 64 * 1024, "dma"),
+        Window("qspi", 0x0001_0000, 64 * 1024, "reg"),
+        Window("gpio", 0x0003_0000, 64 * 1024, "reg"),
+        Window("xvc",  0x0004_0000, 64 * 1024, "reg"),
+        Window("iic0", 0x0005_0000, 64 * 1024, "reg"),
+        Window("iic1", 0x0006_0000, 64 * 1024, "reg"),
+        Window("qsfp", 0x0007_0000, 64 * 1024, "reg"),
+    ),
+)
+
 # AXI GPIO register offsets, from the IP's own documentation. Channel 1 drives the eight
 # LEDs; channel 2 is the single bit wired to the endpoint's interrupt request.
 GPIO_DATA1 = 0x0000

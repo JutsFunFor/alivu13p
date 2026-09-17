@@ -5,6 +5,10 @@
 #   ./pcie_bringup.sh load     - build + insert the xdma driver, chown the nodes
 #   ./pcie_bringup.sh test     - BAR (reg_rw) + DMA (BRAM loopback) smoke test
 #   ./pcie_bringup.sh all      - rescan, load, test
+#   ./pcie_bringup.sh detach   - unload the driver and remove the endpoint, so the
+#                                board can be reprogrammed over JTAG without the host
+#                                holding a device that is about to stop existing
+#   ./pcie_bringup.sh attach   - the reverse: rescan, then load
 #
 # The FPGA must already be configured (JTAG or QSPI) before the host will see it.
 # A device that was not configured when the host booted usually needs a WARM
@@ -56,6 +60,29 @@ do_load() {
     ls /dev/xdma* 2>/dev/null || { echo "FAIL: no /dev/xdma* nodes - is the FPGA enumerated?"; exit 1; }
 }
 
+do_detach() {
+    # Reprogramming over JTAG makes the endpoint disappear and come back as a different
+    # design. Doing that underneath a loaded driver leaves the kernel holding mappings
+    # to a device that no longer answers, which shows up later as an MCE or a hang
+    # rather than as anything pointing at the real cause. Removing it first is cheap.
+    if [ -d /sys/module/xdma ]; then
+        echo "== unloading xdma =="
+        sudo rmmod xdma
+    fi
+    for slot in $(lspci -d 10ee: -D | cut -d' ' -f1); do
+        echo "== removing $slot =="
+        echo 1 | sudo tee "/sys/bus/pci/devices/$slot/remove" >/dev/null
+    done
+    sleep 1
+    if find_dev | grep -q .; then
+        echo "WARNING: a Xilinx device is still present:"
+        find_dev
+        return 1
+    fi
+    echo "OK: no Xilinx endpoint. Safe to reprogram."
+    echo "Afterwards: ./pcie_bringup.sh attach"
+}
+
 do_test() {
     [ -e /dev/xdma0_user ] || { echo "FAIL: /dev/xdma0_user missing - run 'load' first"; exit 1; }
     echo
@@ -89,5 +116,7 @@ case "${1:-all}" in
     load)   do_load ;;
     test)   do_test ;;
     all)    do_rescan; do_load; do_test ;;
-    *) sed -n '2,12p' "$0"; exit 1 ;;
+    detach) do_detach ;;
+    attach) do_rescan; do_load ;;
+    *) sed -n '2,16p' "$0"; exit 1 ;;
 esac

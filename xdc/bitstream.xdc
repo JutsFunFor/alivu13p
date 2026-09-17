@@ -18,5 +18,5 @@ set_property CFGBVS GND [current_design]
 # Unclaimed pins are pulled down. This is the safe default for this board, with one
 # consequence that has to be remembered rather than discovered: a QSFP module's ResetL
 # is active low, so a design that leaves it unclaimed holds the module in reset. See the
-# note at the end of qsfp.xdc.
+# note at the end of qsfp_sideband.xdc.
 set_property BITSTREAM.CONFIG.UNUSEDPIN Pulldown [current_design]

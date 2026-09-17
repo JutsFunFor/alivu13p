@@ -232,9 +232,10 @@ then silently does not work.
 |---|---|---|---|
 | User LEDs | 8, bank 64 | assigned, not yet observed | `designs/01_golden_pcie` walks a bit across them — watch the card |
 | PCIe link LED | `BD20` | assigned, not yet observed | driven from `user_lnk_up`; lights when the link trains |
-| QSFP ModPrsL / IntL | 2 per cage, bank 68 | assigned, not yet observed | read back with and without a module inserted — presence detect is self-checking |
+| QSFP ModPrsL / IntL | 2 per cage, bank 68 | assigned, not yet observed | `designs/06_board_mgmt` reads them back; presence detect is self-checking, since a cage that says "empty" must also be silent on I2C |
+| QSFP module I2C | 2 per cage, bank 68 | assigned, not yet observed | `designs/06_board_mgmt` reads the module's SFF-8636 EEPROM. A wrong pin returns 0xFF forever; a right one returns ASCII |
 | Main board I2C | 2 | **unknown** | see below |
-| QSPI | — | not needed as pins | the config bank is fixed by the device and `axi_quad_spi` reaches it through `STARTUPE3`; what is still unknown is the flash part |
+| QSPI | — | not needed as pins | the config bank is fixed by the device and `axi_quad_spi` reaches it through `STARTUPE3`. The flash part is unknown; `designs/06_board_mgmt` reads its JEDEC ID |
 
 ### Main board I2C is genuinely unknown
 

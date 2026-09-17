@@ -8,7 +8,8 @@ own copies, so a pin fix happens in one place.
 | `clocks.xdc` | 100 MHz board clock; the 400 MHz pair, commented out until measured |
 | `pcie.xdc` | PCIe reference clock, PERST, link LED — plus the lane table, as reference |
 | `led.xdc` | eight user LEDs |
-| `qsfp.xdc` | both QSFP28 cages: lanes, reference clocks, module control, cage LEDs |
+| `qsfp_gty.xdc` | both QSFP28 cages: 8 lanes and the two reference clocks |
+| `qsfp_sideband.xdc` | module I2C, presence, reset and low-power control, cage LEDs |
 | `ddr4_c0.xdc` … `ddr4_c3.xdc` | four DDR4 channels, 117 pins each, one per SLR |
 | `bitstream.xdc` | configuration settings shared by every design |
 | `golden.xdc` | fallback settings — only for an image flashed at address 0 |
