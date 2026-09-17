@@ -35,9 +35,10 @@ Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC 
 | PCIe PERST / link LED pins | ❓ | — | must be probed on hardware |
 | BRAM over DMA | ❌ | — | — |
 | URAM over DMA | ❌ | — | — |
-| DDR4 channels 0-3 (16 GB) | ❌ | — | design not yet written |
-| DDR4 pinout, 4 channels | ⚙️ | `xdc/ddr4_c[0-3].xdc` | 468 pins derived from the board vendor's reference project via `xdc/tools/gen_ddr4_xdc.py`. Not yet exercised on hardware |
-| DDR4 calibration status | ❌ | — | — |
+| DDR4 channels 0-3 calibrate | ✅ | vendor reference bitstream | all 4 MIGs: `CALIBRATION_FAIL.STATUS=FALSE`, stage `NONE`, 15 stages PASS / 12 SKIP, "No errors detected during calibration" (2026-09-17) |
+| DDR4 via our own MIG design | ❌ | — | design not yet written |
+| DDR4 pinout, 4 channels | ✅ | `xdc/ddr4_c[0-3].xdc` | 468 pins; the identical assignment calibrates all 4 channels on this board (2026-09-17). Not yet exercised from our own design |
+| DDR4 calibration readout | ✅ | Hardware Manager | `get_hw_migs` reports all 4 cores and per-stage status over JTAG, with no `.ltx` required |
 | AXI-Lite GPIO / user LEDs | ❓ | — | LED pin assignments not established here |
 | QSPI flash | ❓ | — | — |
 | XDMA driver build on kernel 6.8 | ✅ | `third_party/dma_ip_drivers` | builds clean **unpatched** on 6.8.0-138 (2026-09-17). Current upstream already carries the 6.3/6.4 guards; no patch needed |

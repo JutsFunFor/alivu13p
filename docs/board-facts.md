@@ -53,6 +53,54 @@ precise choice.
 It matters for PCIe: at 0.72 V the `PCIE4` core clock is capped at 250 MHz, which is not
 enough for Gen3 x16.
 
+## DDR4 — established
+
+Four independent channels, one per SLR, each 72 bits wide: `MT40A512M16JY-083E` for
+[63:0] plus `MT40A1G8WE-083E` for the [71:64] ECC lane.
+
+| Channel | SLR | Refclk | `reset_n` | `act_n` |
+|---|---|---|---|---|
+| c0 | SLR0 | AE31 | Y32 | Y31 |
+| c1 | SLR1 | AW14 | AL15 | AR13 |
+| c2 | SLR2 | J26 | B29 | A28 |
+| c3 | SLR3 | G25 | B24 | A22 |
+
+Full pin assignment is in `xdc/ddr4_c[0-3].xdc`, 117 pins per channel.
+
+**All four channels calibrate on this board** (2026-09-17). Verified by loading the board
+vendor's four-channel reference bitstream and reading the MIG calibration engines over
+JTAG: every channel reports `CALIBRATION_FAIL.STATUS = FALSE`, failing stage `NONE`, and
+"No errors detected during calibration", with 15 calibration stages passing and 12
+skipped. The skipped stages are the DBI, VREF-training and multi-rank ones, which this
+configuration does not use — a skip there is normal, not a partial result.
+
+Reproduce it with:
+
+```bash
+vivado -nojournal -nolog -mode batch -source tools/check_ddr4_cal.tcl -tclargs <target>
+```
+
+No `.ltx` is needed. Every DDR4 MIG instantiates its own calibration engine regardless of
+the IP's "Debug Signals" option, and Hardware Manager reads it over the debug hub — so
+calibration is observable even in a design containing no ILA.
+
+That result also validates the pin assignment itself: these exact pins drive four working
+memory channels on this board.
+
+## JTAG — check which board you are talking to
+
+`get_hw_targets` can return several cables, and `[lindex [get_hw_targets] 0]` is only
+right when exactly one is attached. On the machine this repository was developed on, the
+first target is a completely different board (an `xcku115`); the ALIVU13P is the second.
+Programming the wrong device does not fail — it succeeds, on the wrong board.
+
+```bash
+vivado -nojournal -nolog -mode batch -source tools/jtag_scan.tcl
+```
+
+lists every target with the devices behind it and their `DONE` status. Use the printed
+target string explicitly in any programming or debug script.
+
 ## Open — not yet established
 
 These are needed by designs not yet written. They are listed as open rather than
