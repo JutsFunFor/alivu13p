@@ -281,14 +281,33 @@ def main() -> int:
         print("\n--dry-run: nothing published")
         return 0
 
-    command = ["gh", "release", "create", args.tag,
-               "--title", args.title or args.tag,
-               "--notes-file", str(notes_file)]
+    # Create, upload, then publish -- three steps rather than one. These assets are
+    # hundreds of megabytes, and a single create-with-assets that dies partway leaves a
+    # release whose notes promise files it does not have. Uploading into a draft and
+    # flipping it at the end means an interrupted run can simply be run again: the
+    # release already exists, --clobber replaces whatever made it across, and nothing is
+    # public until every file is there.
+    exists = subprocess.run(["gh", "release", "view", args.tag], cwd=REPO,
+                            capture_output=True, text=True).returncode == 0
+    if exists:
+        print(f"\n{args.tag} already exists; updating its notes and re-uploading assets")
+        run("gh", "release", "edit", args.tag, "--notes-file", str(notes_file),
+            "--title", args.title or args.tag)
+    else:
+        run("gh", "release", "create", args.tag, "--draft",
+            "--title", args.title or args.tag, "--notes-file", str(notes_file))
+
+    for asset in assets:
+        size = asset.stat().st_size / 1e6
+        print(f"  uploading {asset.name} ({size:.1f} MB)", flush=True)
+        subprocess.run(["gh", "release", "upload", args.tag, str(asset), "--clobber"],
+                       cwd=REPO, check=True)
+
     if args.draft:
-        command.append("--draft")
-    command += [str(a) for a in assets]
-    print("\n" + " ".join(command[:6]) + f" ... ({len(assets)} assets)")
-    subprocess.run(command, cwd=REPO, check=True)
+        print(f"\n{args.tag} left as a draft")
+    else:
+        run("gh", "release", "edit", args.tag, "--draft=false")
+        print(f"\npublished {run('gh', 'release', 'view', args.tag, '--json', 'url', '-q', '.url')}")
     return 0
 
 
