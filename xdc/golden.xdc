@@ -10,3 +10,18 @@
 
 set_property BITSTREAM.CONFIG.CONFIGFALLBACK ENABLE [current_design]
 set_property BITSTREAM.CONFIG.NEXT_CONFIG_ADDR 0x04000000 [current_design]
+
+# The configuration watchdog. This is what makes fallback actually happen: if
+# configuration stalls or the image is corrupt, the timer expires and the device falls
+# back instead of sitting there half-configured.
+#
+# It lives here rather than in bitstream.xdc, and that placement is not cosmetic. The
+# timer is armed whenever it is set, not only when fallback is enabled, and it runs
+# during configuration. At ~0.67 s it expires long before a 36 MB bitstream finishes
+# loading over JTAG, which aborts the load: the device reports a watchdog timeout and a
+# bad packet error, the startup state machine never leaves phase 0, and DONE stays low.
+# The symptom looks like a corrupt bitstream rather than a bitstream setting.
+#
+# Flash configuration is fast enough that this does not arise, which is exactly the case
+# this file is for.
+set_property BITSTREAM.CONFIG.TIMER_CFG 0x01FFFFFF [current_design]

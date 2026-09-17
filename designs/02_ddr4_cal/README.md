@@ -97,3 +97,39 @@ are handled with a flag handshake instead of a synchroniser, since `error_count`
 `first_bad_addr` stop changing once `done` rises; a VIO sampling an unsynchronised
 counter can return a number that never existed, which on an error count is the kind of
 wrong that gets believed.
+
+## Result on this board (2026-09-17)
+
+```
+=== DDR4 calibration: 4 MIG core(s) on xcvu13p ===
+  MIG_1    OK      pass=15 skip=12 other=0  stage=NONE    No errors detected during calibration.
+  MIG_2    OK      pass=15 skip=12 other=0  stage=NONE    No errors detected during calibration.
+  MIG_3    OK      pass=15 skip=12 other=0  stage=NONE    No errors detected during calibration.
+  MIG_4    OK      pass=15 skip=12 other=0  stage=NONE    No errors detected during calibration.
+All 4 channel(s) calibrated.
+```
+
+and the BIST, read from a device programmed moments earlier so that nothing could be
+left over from a previous run:
+
+```
+fresh after program:   calib=0 busy=0 done=0 pass=0 ecc=0  errs=0/0/0/0
+after start:           calib=f busy=0 done=f pass=f ecc=0  errs=0/0/0/0
+```
+
+The transition from `0` to `f` is the evidence. `done` only sets when a channel's state
+machine has completed all 8192 writes and all 8192 reads, and `pass` only sets when the
+error count is zero, so `done=f pass=f` means four channels each moved 1 MB through real
+DRAM and got every word back intact. Reading `pass=f` without having watched it start
+would prove nothing — it could be a latch from an earlier run.
+
+Each channel's I/O and all of its controller logic land in the matching SLR, so the `cN`
+numbering really does mean SLR*n*.
+
+## If DONE stays low when you program this
+
+Not a memory problem. See the configuration-watchdog note in
+[docs/toolchain.md](../../docs/toolchain.md): `BITSTREAM.CONFIG.TIMER_CFG` arms a timer
+that expires long before a 36 MB bitstream finishes loading over JTAG, and the resulting
+"End of startup status: LOW" looks like a corrupt bitstream. The status registers name it
+exactly; `tools/program.tcl` prints where to look.

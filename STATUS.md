@@ -39,7 +39,8 @@ Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC 
 | BRAM over DMA | ⚙️ | `designs/01_golden_pcie` | 64 KB at `0xC000_0000`; host test written, not yet run |
 | URAM over DMA | ⚙️ | `designs/01_golden_pcie` | 64 KB at `0xC001_0000`. Synthesis reports **8 URAM** primitives, so it is genuinely UltraRAM rather than block RAM silently substituted |
 | DDR4 channels 0-3 calibrate | ✅ | vendor reference bitstream | all 4 MIGs: `CALIBRATION_FAIL.STATUS=FALSE`, stage `NONE`, 15 stages PASS / 12 SKIP, "No errors detected during calibration" (2026-09-17) |
-| DDR4 via our own MIG design | ⚙️ | `designs/02_ddr4_cal` | builds under 2025.2: WNS +0.049 ns, WHS +0.010 ns, **0 critical warnings**. 4 MIGs, one per SLR, matching the channel numbering. Not yet run on hardware |
+| DDR4 via our own MIG design | ✅ | `designs/02_ddr4_cal` | **all 4 channels calibrate and pass a memory test on this board** (2026-09-17). 15 stages PASS / 12 SKIP per channel, stage `NONE`, no errors. BIST: 8192 writes + 8192 reads per channel, 0 errors, no ECC events. WNS +0.049 ns, WHS +0.010 ns, 0 critical warnings |
+| DDR4 read/write data path | ✅ | `designs/02_ddr4_cal` | dense walk (256 KB contiguous) plus sparse walk (1 MB stride across the full 4 GB), address-derived pattern. All four channels `pass=1`, `errors=0`. Verified from a freshly programmed device, so the result is not a stale latch |
 | DDR4 pinout, 4 channels | ✅ | `xdc/ddr4_c[0-3].xdc` | 468 pins, now 117 per channel including the data mask. The identical assignment calibrates all 4 channels on this board (2026-09-17) |
 | DDR4 channel-to-SLR mapping | ✅ | `designs/02_ddr4_cal` | each channel's I/O **and** all ~49,700 of its controller cells land in the matching SLR, no spillover. `cN` really does mean SLR*n* |
 | DDR4 calibration readout | ✅ | Hardware Manager | `get_hw_migs` reports all 4 cores and per-stage status over JTAG, with no `.ltx` required |

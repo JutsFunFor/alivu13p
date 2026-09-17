@@ -34,6 +34,22 @@ if {$ltxfile eq ""} {
 }
 if {$ltxfile ne "" && ![file exists $ltxfile]} { puts "no such probes file: $ltxfile"; exit 2 }
 
+# DONE is reported per SLR on this part -- it has four dies, and a single-die property
+# name such as REGISTER.IR.BIT5_DONE simply returns nothing here, which reads as failure
+# even on a device that configured perfectly. Ask every SLR and require all of them.
+proc slr_done {dev} {
+    set seen 0
+    foreach p [list_property $dev] {
+        # Braced, not quoted: inside a quoted string Tcl collapses \[14\] to [14], which
+        # string match then reads as a character class matching "1" or "4" -- so the
+        # pattern silently matches nothing and every device looks unprogrammed.
+        if {![string match {REGISTER.CONFIG_STATUS.SLR*.BIT\[14\]_DONE_PIN} $p]} { continue }
+        incr seen
+        if {[get_property -quiet $p $dev] ne "1"} { return [list 0 $seen] }
+    }
+    return [list [expr {$seen > 0}] $seen]
+}
+
 open_hw_manager
 connect_hw_server -quiet
 if {[catch {open_hw_target $target} err]} {
@@ -54,11 +70,18 @@ if {$ltxfile ne ""} { set_property PROBES.FILE $ltxfile $dev }
 program_hw_devices $dev
 refresh_hw_device $dev
 
-set done [get_property -quiet REGISTER.IR.BIT5_DONE $dev]
-puts "DONE = $done"
-if {$done ne "1"} {
-    puts "The device did not assert DONE. The bitstream was rejected -- most often"
-    puts "because it was built for a different part than the one on this cable."
+lassign [slr_done $dev] ok nslr
+puts "DONE = $ok (checked $nslr SLR(s))"
+if {!$ok} {
+    puts ""
+    puts "The device did not assert DONE. Read its status registers rather than guessing:"
+    puts "  REGISTER.BOOT_STATUS.SLR*   -- WATCHDOG_TIMEOUT_ERROR means the configuration"
+    puts "                                 watchdog fired. BITSTREAM.CONFIG.TIMER_CFG arms"
+    puts "                                 it whenever it is set, and it expires long"
+    puts "                                 before a large bitstream loads over JTAG."
+    puts "  REGISTER.CONFIG_STATUS.SLR* -- BAD_PACKET_ERROR, and the startup state machine"
+    puts "                                 phase, which stays at 000 if startup never ran."
+    puts "Other causes: a bitstream built for a different part, or a bank without power."
     close_hw_target
     exit 1
 }

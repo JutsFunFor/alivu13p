@@ -125,3 +125,37 @@ problem disappears instead of needing to be carried.
 
 The userspace tools that ship with the driver are kernel-version agnostic and build with
 a stock `gcc`.
+
+## The configuration watchdog will refuse your JTAG load
+
+`BITSTREAM.CONFIG.TIMER_CFG` arms the configuration watchdog. It is usually described as
+part of the fallback mechanism, and it is — but it is armed **whenever it is set**, not
+only when `CONFIGFALLBACK` is enabled, and it counts during configuration itself.
+
+At `0x01FFFFFF` the timer is roughly 0.67 s. A 36 MB bitstream takes many seconds to
+shift in over a USB JTAG cable, so the timer expires partway through and aborts the load.
+What you see is:
+
+```
+ERROR: [Labtools 27-3165] End of startup status: LOW
+```
+
+which reads like a corrupt bitstream or a bad board. The device disagrees, if you ask it:
+
+```
+REGISTER.BOOT_STATUS.SLR0.BIT[03]_0_WATCHDOG_TIMEOUT_ERROR = 1
+REGISTER.CONFIG_STATUS.SLR0.BIT[29]_BAD_PACKET_ERROR       = 1
+REGISTER.CONFIG_STATUS.SLR0.BIT[20:18]_CFG_STARTUP_STATE_MACHINE_PHASE = 000
+```
+
+A watchdog timeout, a rejected packet, and a startup state machine that never left phase
+zero. Nothing ambiguous about it — the information is there, it is just not in the error
+message.
+
+So `TIMER_CFG` lives in `xdc/golden.xdc` rather than `xdc/bitstream.xdc`: only the image
+flashed to QSPI wants it, and flash configuration at 51 MHz on a four-bit bus finishes
+well inside the timer. Any design loaded over JTAG must not set it.
+
+**When a device fails to configure, read its status registers before theorising.** They
+name the failure directly, and the whole check is a dozen lines of Tcl against
+`REGISTER.CONFIG_STATUS.*` and `REGISTER.BOOT_STATUS.*` on the `hw_device`.

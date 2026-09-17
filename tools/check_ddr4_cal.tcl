@@ -37,7 +37,7 @@ refresh_hw_device -quiet $dev
 set migs [lsort [get_hw_migs -quiet]]
 if {[llength $migs] == 0} {
     puts "No MIG cores found. Either the loaded design has no DDR4 controller, or the"
-    puts "device is not programmed (DONE=[get_property -quiet REGISTER.IR.BIT5_DONE $dev])."
+    puts "device is not programmed -- check DONE with tools/program.tcl."
     close_hw_target
     exit 1
 }

@@ -20,7 +20,3 @@ set_property CFGBVS GND [current_design]
 # is active low, so a design that leaves it unclaimed holds the module in reset. See the
 # note at the end of qsfp.xdc.
 set_property BITSTREAM.CONFIG.UNUSEDPIN Pulldown [current_design]
-
-# Watchdog for fallback configuration. Only has an effect together with CONFIGFALLBACK,
-# which golden.xdc enables -- on its own it is inert.
-set_property BITSTREAM.CONFIG.TIMER_CFG 0x01FFFFFF [current_design]
