@@ -1,0 +1,83 @@
+# Measured board facts
+
+The ALIVU13P ships with no documentation. Everything on this page was established by
+querying the part in Vivado or by measuring the board. Nothing here is assumed, and
+anything not yet established is listed as open rather than guessed.
+
+## QSFP28 / GTY — established
+
+Two cages, on different GTY banks. Quad and refclk assignment was confirmed by querying
+`xcvu13p-fhgb2104-2L-e` directly and by measuring the clocks on the board.
+
+| Cage | Bank | GT quad | Refclk | Pins | Measured |
+|---|---|---|---|---|---|
+| `up_qsfp` (far from PCIe fingers) | 233 | QUAD27 | `MGTREFCLK0_233` | D11 / D10 | 161.13 MHz ✔ |
+| `dn_qsfp` (near PCIe fingers) | 229 | QUAD23 | `MGTREFCLK0_229` | Y11 / Y10 | 161.13 MHz ✔ |
+
+**`MGTREFCLK1` is dead on both banks** — `B11`/`B10` and `V11`/`V10` have no oscillator
+routed. Measured, not inferred. Do not select it; a design that does will build happily
+and then never produce a link.
+
+161.1328125 MHz is the standard 25G/100G Ethernet reference: ×160 gives 25.78125 Gbps,
+×80 gives 12.890625 Gbps.
+
+## System clock — established
+
+100 MHz differential on `AY23` / `BA23`, bank 64, `DIFF_SSTL12`.
+
+Bank 64 runs at 1.2 V, which has a consequence worth knowing: `DIFF_TERM` must be
+`FALSE` on this input. `DIFF_TERM_ADV` is only legal for I/O standards with internal
+differential termination such as LVDS, so setting it `TRUE` on a `DIFF_SSTL12` port
+fails DRC `PORTPROP-6` before placement.
+
+## The QSFP module-control trap — established by construction
+
+If a design does not declare `resetl` / `lpmode` / `i2c` / `modprsl` / `intl` as ports,
+those pins fall to `BITSTREAM.CONFIG.UNUSEDPIN`, which defaults to **`Pulldown`**.
+
+`ResetL` is **active low**. A pulldown therefore holds the module in permanent reset.
+
+Passive copper DACs do not care — they have no module logic to reset, so they link
+anyway, which is exactly why this defect survives testing. Optical, AOC and retimed
+modules never come up. Any design intended for real optics must drive `resetl` high and
+`lpmode` low as genuine ports.
+
+## Part identification — established
+
+`xcvu13p-fhgb2104-2L-e`.
+
+The `L` means `Vccint` may be either 0.72 V or 0.85 V. This board runs 0.85 V, readable
+from SysMon, so `-2L-e` and `-2-e` behave identically in Vivado; `-2L-e` is the more
+precise choice.
+
+It matters for PCIe: at 0.72 V the `PCIE4` core clock is capped at 250 MHz, which is not
+enough for Gen3 x16.
+
+## Open — not yet established
+
+These are needed by designs not yet written. They are listed as open rather than
+assumed, because an unverified pin assignment produces a design that builds cleanly and
+then silently does not work.
+
+| Signal group | Pins needed | How to establish |
+|---|---|---|
+| PCIe refclk | 1 diff pair | Constrained by the device: a x16 endpoint can only use the GTY quads wired to its block location, and the refclk must be one of that quad's `MGTREFCLK` pins. That narrows it to a few candidates; the link training is the pass/fail test |
+| PCIe PERST | 1 | Probe, or infer from which candidate lets the endpoint come out of reset |
+| PCIe link LED | 1 | Drive each candidate and look at the board |
+| User LEDs | 8 | Drive each candidate and look at the board |
+| QSPI | 4-6 | Config-bank pins are largely fixed by the device; confirm against the flash part |
+| DDR4 | 4 channels × ~120 | The large one. Worth automating rather than probing by hand |
+| Main board I2C | 2 | Probe |
+| QSFP sideband (ModPrsL, IntL) | 2 per cage | Read back with and without a module inserted — presence detect is self-checking |
+
+### Method
+
+The reliable technique for single-ended signals is to drive each candidate pin from the
+FPGA in a known pattern and observe it externally, or to read it back and compare
+against a known board state — inserting and removing a QSFP module, for instance, gives
+a self-checking test for `ModPrsL`.
+
+For differential and hard-block signals, start from what the device permits: querying the
+part in Vivado for the quads and reference clocks reachable from a given hard-block
+location usually reduces the search to a handful of options, and the interface either
+comes up or it does not.
