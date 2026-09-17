@@ -1,9 +1,9 @@
 # alivu13p
 
-Board support for the **ALIVU13P** — a low-cost ex-datacenter accelerator card built
+Board support for the **ALIVU13P** — ex-datacenter accelerator card built
 around the AMD/Xilinx Virtex UltraScale+ **XCVU13P** (`xcvu13p-fhgb2104-2L-e`).
 
-The card is cheap and widely available second-hand, and undocumented. This repository
+The card is available second-hand, and undocumented. This repository
 brings it up on a current toolchain and keeps an honest record of which interfaces have
 actually been proven to work, with the evidence attached.
 
@@ -73,7 +73,7 @@ Vivado installation. See [xdc/README.md](xdc/README.md).
 ## The PCIe gotcha that catches everyone
 
 The host walks the PCIe bus once, at boot. A card configured over JTAG *afterwards* does
-not exist as far as Linux is concerned — nothing is wrong with your design. Either
+not exist as far as Linux is concerned — nothing is wrong with design. Either
 rescan, or warm-reboot (**not** a power cycle, which wipes the FPGA), or flash the image
 to QSPI so the card configures at power-on. See
 [docs/pcie-bringup.md](docs/pcie-bringup.md).
