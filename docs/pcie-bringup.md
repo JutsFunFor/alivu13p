@@ -68,6 +68,44 @@ Both IDs are in the table shipped with the driver, so no patching is needed eith
 `designs/01_golden_pcie` prints the ID it configured during the build; compare it with
 what `lspci -d 10ee: -nn` reports.
 
+## Rescan can succeed and still leave the card useless
+
+There are two separate enumeration failures, and they look nothing alike once you know
+what to read.
+
+The first is the familiar one: the card is simply absent from `lspci`. The host walked
+the bus at boot, the FPGA was not configured yet, and nothing has looked since.
+
+The second is worse because it looks like success. `/sys/bus/pci/rescan` finds the device,
+`lspci -d 10ee:` lists it with the right ID, the link trains — and the driver still cannot
+do anything, because the device has no memory regions:
+
+```
+$ cat /sys/bus/pci/devices/0000:1b:00.0/resource
+0x0000000000000000 0x0000000000000000 0x0000000000000000
+...
+```
+
+All zeroes. `dmesg` says why:
+
+```
+pcieport 0000:18:10.0: bridge window [mem size 0x00100000]: can't assign; no space
+pci 0000:1b:00.0: BAR 0 [mem size 0x00080000]: failed to assign
+pci 0000:1b:00.0: BAR 1 [mem size 0x00010000]: failed to assign
+```
+
+The firmware sized the bridge windows at boot, when nothing was behind that port, so
+there is no address space to hand the BARs now. Rescanning cannot create it. This is why
+the warm reboot is described here as the reliable option rather than the inconvenient
+one: at power-on self-test the device is already there and gets a window sized for it.
+
+`pci=realloc=on` on the kernel command line tells Linux to re-do the firmware's
+allocation, which can also fix it — but it needs a reboot too, so it is only worth
+reaching for if reboots alone do not help.
+
+**Check `resource` or `dmesg`, not just `lspci`.** A device with no BARs is listed exactly
+like a working one.
+
 ## Address maps are per-design
 
 There is no such thing as "the" BAR layout for a board. Two designs on the same card will

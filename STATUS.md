@@ -11,6 +11,7 @@ failure.
 | | Meaning |
 |---|---|
 | ✅ | Verified on hardware, evidence recorded |
+| ⚠️ | Works, with a limitation worth knowing about |
 | ⚙️ | Builds clean, not yet hardware-verified |
 | ❓ | Not yet established here — must be determined before it can be relied on |
 | 🚫 | Not testable with available hardware |
@@ -30,7 +31,9 @@ Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC 
 | QSFP module control (ResetL/LPMode) | ⚙️ | `designs/03_qsfp_ibert` | driven as real ports — ResetL high, LPMode low |
 | Optical / AOC modules | 🚫 | — | only a passive DAC is available. DACs link regardless of ResetL, so the module-control path cannot be proven here |
 | System clock 100 MHz (AY23/BA23) | ✅ | `designs/03_qsfp_ibert` | drives the IBERT debug hub; design builds and meets timing |
-| PCIe Gen3 x16 (XDMA) | ⚙️ | `designs/01_golden_pcie` | builds under 2025.2: WNS +0.165 ns, WHS +0.010 ns, **0 critical warnings**. Endpoint at `PCIE40E4_X0Y1` on `GTYE4_CHANNEL_X1Y16..X1Y31`, device ID `0x903F`. Not yet enumerated by a host |
+| PCIe link trains | ✅ | `designs/01_golden_pcie` | **enumerates on this host** as `10ee:903f`, `LnkSta: Speed 8GT/s (ok)` (2026-09-17). BAR sizes as configured: 512 KB register window, 64 KB XDMA config. WNS +0.165 ns, 0 critical warnings |
+| PCIe link width | ⚠️ | `designs/01_golden_pcie` | trains at **x8, not x16** — but the limit is the slot, not the card. The upstream PEX 8747 port is itself `LnkCap: Width x8` and reports `x8 (ok)`; the kernel names it explicitly: "limited by 8.0 GT/s PCIe x8 link at 0000:18:10.0". The endpoint advertises x16 |
+| PCIe BAR assignment | ❌ | `designs/01_golden_pcie` | **blocked on a host reboot.** The card enumerates but gets no memory regions: the firmware sized the bridge window at boot with nothing behind that port, so there is no space to assign. `dmesg`: "bridge window [mem size 0x00100000]: can't assign; no space". Nothing can be tested from the host until this is resolved |
 | PCIe reference clock | ✅ | `designs/00_clk_probe` | `AK11`/`AK10` (bank 226 MGTREFCLK1) measured at 100.0016 MHz; `AV11`/`AV10` carries the same oscillator (2026-09-17) |
 | PCIe PERST | ✅ | `xdc/pcie.xdc` | `AR26` is the device's own `PERSTN0` pin — named by the silicon, not chosen from general-purpose pins. I/O standard still asserted rather than measured; enumeration is its test |
 | PCIe lane mapping | ✅ | `designs/01_golden_pcie` | confirmed twice over: the pin table is internally consistent (every lane's RX and TX on one channel, no gaps), and with the lane pins left **unconstrained** the tool independently placed the endpoint on exactly those channels — `X1Y16..X1Y31` at `PCIE40E4_X0Y1` |
