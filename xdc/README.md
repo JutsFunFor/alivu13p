@@ -48,6 +48,11 @@ TX are separate package pins, so a whole 16-lane pinout being internally consist
 every lane's two pins landing on the same channel, with no gaps in the sequence — is
 strong evidence it was transcribed correctly, and it costs nothing to verify.
 
+The supplied sibling `vu13p/xdc/` was also audited. Its DDR4 channel names and
+data ordering differ; its main I2C assignment conflicts with a QSFP cage. See
+the [comparison and hardware evidence](../docs/validation-2026-09-17.md#supplied-xdc-audit)
+before importing any of those files.
+
 ## Generated files
 
 `ddr4_c[0-3].xdc` are generated, not hand-written. Regenerate rather than editing:

@@ -9,7 +9,7 @@
 # The FPGA must already be configured (JTAG or QSPI) before the host will see it.
 # A device that was not configured when the host booted usually needs a WARM
 # reboot to enumerate; `rescan` is the free thing to try first.
-set -u
+set -euo pipefail
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 XDMA=${XDMA_SRC:-$REPO/third_party/dma_ip_drivers/XDMA/linux-kernel}
@@ -39,6 +39,7 @@ do_rescan() {
         echo "The FPGA must be configured BEFORE the host enumerates PCIe."
         echo "Program the bitstream, then warm-reboot (reboot, not power off):"
         echo "    sudo reboot"
+        return 1
     fi
 }
 
@@ -48,10 +49,10 @@ do_load() {
     make -C "$XDMA/xdma" -j"$(nproc)" || exit 1
     make -C "$XDMA/tools"    >/dev/null || exit 1
     echo "== loading =="
-    sudo rmmod xdma 2>/dev/null
+    if [ -d /sys/module/xdma ]; then sudo rmmod xdma; fi
     sudo insmod "$XDMA/xdma/xdma.ko" interrupt_mode=1 || exit 1
     sleep 1
-    sudo chown "$USER" /dev/xdma* 2>/dev/null
+    sudo chown "$USER" /dev/xdma*
     ls /dev/xdma* 2>/dev/null || { echo "FAIL: no /dev/xdma* nodes - is the FPGA enumerated?"; exit 1; }
 }
 
@@ -64,21 +65,23 @@ do_test() {
     echo "== BAR access: blink the LEDs via AXI GPIO @ $GPIO_OFF =="
     # GPIO data register is at offset 0x0 of the AXI GPIO; write a walking pattern.
     for v in 0x000000ff 0x00000000 0x000000aa 0x00000055 0x00000000; do
-        "$XDMA/tools/reg_rw" /dev/xdma0_user $GPIO_OFF w $v >/dev/null && echo "  wrote LED = $v"
+        "$XDMA/tools/reg_rw" /dev/xdma0_user $GPIO_OFF w $v >/dev/null || return 1
+        echo "  wrote LED = $v"
         sleep 0.3
     done
     echo
     echo "== DMA loopback through the 64K BRAM @ 0xC0000000 =="
     tmp=$(mktemp -d)
+    trap 'rm -rf -- "$tmp"' EXIT
     head -c $BRAM_SIZE /dev/urandom > "$tmp/tx.bin"
     "$XDMA/tools/dma_to_device"   -d /dev/xdma0_h2c_0 -f "$tmp/tx.bin" -s $BRAM_SIZE -a 0xC0000000 || exit 1
     "$XDMA/tools/dma_from_device" -d /dev/xdma0_c2h_0 -f "$tmp/rx.bin" -s $BRAM_SIZE -a 0xC0000000 || exit 1
     if cmp -s "$tmp/tx.bin" "$tmp/rx.bin"; then
         echo "PASS: $BRAM_SIZE bytes written and read back identical."
     else
-        echo "FAIL: readback mismatch"; cmp "$tmp/tx.bin" "$tmp/rx.bin" | head
+        echo "FAIL: readback mismatch"
+        return 1
     fi
-    rm -rf "$tmp"
 }
 
 case "${1:-all}" in

@@ -21,6 +21,8 @@ Toolchain: **Vivado 2025.2**, part `xcvu13p-fhgb2104-2L-e`, host kernel 6.8.0-13
 
 Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC cable.
 
+Latest: [DDR4 and PCIe validation after warm reboot](docs/validation-2026-09-17.md).
+
 ## Interfaces
 
 | Interface | State | Design | Evidence |
@@ -33,22 +35,22 @@ Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC 
 | System clock 100 MHz (AY23/BA23) | ✅ | `designs/03_qsfp_ibert` | drives the IBERT debug hub; design builds and meets timing |
 | PCIe link trains | ✅ | `designs/01_golden_pcie` | **enumerates on this host** as `10ee:903f`, `LnkSta: Speed 8GT/s (ok)` (2026-09-17). BAR sizes as configured: 512 KB register window, 64 KB XDMA config. WNS +0.165 ns, 0 critical warnings |
 | PCIe link width | ⚠️ | `designs/01_golden_pcie` | trains at **x8, not x16** — but the limit is the slot, not the card. The upstream PEX 8747 port is itself `LnkCap: Width x8` and reports `x8 (ok)`; the kernel names it explicitly: "limited by 8.0 GT/s PCIe x8 link at 0000:18:10.0". The endpoint advertises x16 |
-| PCIe BAR assignment | ❌ | `designs/01_golden_pcie` | **blocked on a host reboot.** The card enumerates but gets no memory regions: the firmware sized the bridge window at boot with nothing behind that port, so there is no space to assign. `dmesg`: "bridge window [mem size 0x00100000]: can't assign; no space". Nothing can be tested from the host until this is resolved |
+| PCIe BAR assignment | ✅ | `designs/01_golden_pcie` | Warm reboot fixed allocation: BAR0 `0xb5c00000` (512 KiB), BAR1 `0xb5c80000` (64 KiB); host tests pass. See [validation record](docs/validation-2026-09-17.md) |
 | PCIe reference clock | ✅ | `designs/00_clk_probe` | `AK11`/`AK10` (bank 226 MGTREFCLK1) measured at 100.0016 MHz; `AV11`/`AV10` carries the same oscillator (2026-09-17) |
 | PCIe PERST | ✅ | `xdc/pcie.xdc` | `AR26` is the device's own `PERSTN0` pin — named by the silicon, not chosen from general-purpose pins. I/O standard still asserted rather than measured; enumeration is its test |
 | PCIe lane mapping | ✅ | `designs/01_golden_pcie` | confirmed twice over: the pin table is internally consistent (every lane's RX and TX on one channel, no gaps), and with the lane pins left **unconstrained** the tool independently placed the endpoint on exactly those channels — `X1Y16..X1Y31` at `PCIE40E4_X0Y1` |
 | PCIe link LED (`BD20`) | ⚙️ | `designs/01_golden_pcie` | driven from `user_lnk_up`; not yet observed lit |
 | Reference-clock probe | ✅ | `designs/00_clk_probe` | 12 candidates measured at once; 4 known-state controls all read as predicted. WNS +7.109 ns, 0 critical warnings |
-| BRAM over DMA | ⚙️ | `designs/01_golden_pcie` | 64 KB at `0xC000_0000`; host test written, not yet run |
-| URAM over DMA | ⚙️ | `designs/01_golden_pcie` | 64 KB at `0xC001_0000`. Synthesis reports **8 URAM** primitives, so it is genuinely UltraRAM rather than block RAM silently substituted |
+| BRAM over DMA | ✅ | `designs/01_golden_pcie` | 64 KiB random roundtrip, unaligned transfers and address isolation pass (2026-09-17) |
+| URAM over DMA | ✅ | `designs/01_golden_pcie` | 64 KiB random roundtrip, unaligned transfers and address isolation pass; synthesis confirms 8 URAM primitives (2026-09-17) |
 | DDR4 channels 0-3 calibrate | ✅ | vendor reference bitstream | all 4 MIGs: `CALIBRATION_FAIL.STATUS=FALSE`, stage `NONE`, 15 stages PASS / 12 SKIP, "No errors detected during calibration" (2026-09-17) |
 | DDR4 via our own MIG design | ✅ | `designs/02_ddr4_cal` | **all 4 channels calibrate and pass a memory test on this board** (2026-09-17). 15 stages PASS / 12 SKIP per channel, stage `NONE`, no errors. BIST: 8192 writes + 8192 reads per channel, 0 errors, no ECC events. WNS +0.049 ns, WHS +0.010 ns, 0 critical warnings |
 | DDR4 read/write data path | ✅ | `designs/02_ddr4_cal` | dense walk (256 KB contiguous) plus sparse walk (1 MB stride across the full 4 GB), address-derived pattern. All four channels `pass=1`, `errors=0`. Verified from a freshly programmed device, so the result is not a stale latch |
 | DDR4 pinout, 4 channels | ✅ | `xdc/ddr4_c[0-3].xdc` | 468 pins, now 117 per channel including the data mask. The identical assignment calibrates all 4 channels on this board (2026-09-17) |
 | DDR4 channel-to-SLR mapping | ✅ | `designs/02_ddr4_cal` | each channel's I/O **and** all ~49,700 of its controller cells land in the matching SLR, no spillover. `cN` really does mean SLR*n* |
 | DDR4 calibration readout | ✅ | Hardware Manager | `get_hw_migs` reports all 4 cores and per-stage status over JTAG, with no `.ltx` required |
-| AXI-Lite GPIO / user LEDs | ⚙️ | `designs/01_golden_pcie` | 8 LEDs on bank 64, validated against the device and consistent with that bank's 1.2 V; walked from the host by `host/tests/test_registers.py`, not yet watched |
-| User interrupts | ⚙️ | `designs/01_golden_pcie` | host raises its own via GPIO channel 2 and waits on `/dev/xdma0_events_0`; test written, not yet run |
+| AXI-Lite GPIO / user LEDs | ⚠️ | `designs/01_golden_pcie` | GPIO data readback and walking bits pass from host (2026-09-17); physical LED illumination still needs visual confirmation |
+| User interrupts | ✅ | `designs/01_golden_pcie` | Host asserts GPIO channel 2, receives MSI through `/dev/xdma0_events_0`, then deasserts request (2026-09-17) |
 | XVC (JTAG over PCIe) | ⚙️ | `designs/01_golden_pcie` | debug bridge at `0x0004_0000`, which is already the driver's default `xvc_bar_offset` |
 | QSPI flash | ❓ | — | needs no pin constraints — the config bank is fixed and `axi_quad_spi` reaches it through `STARTUPE3`. The flash part is still unidentified |
 | XDMA driver build on kernel 6.8 | ✅ | `third_party/dma_ip_drivers` | builds clean **unpatched** on 6.8.0-138 (2026-09-17). Current upstream already carries the 6.3/6.4 guards; no patch needed |

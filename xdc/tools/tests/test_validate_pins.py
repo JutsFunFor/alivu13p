@@ -43,6 +43,18 @@ set_property IOSTANDARD LVCMOS12 [get_ports {user_led[*]}]
     assert "all checks passed" in r.stdout
 
 
+@pytest.mark.parametrize("standard", [
+    "SSTL12_DCI", "POD12_DCI", "DIFF_POD12", "DIFF_POD12_DCI",
+    "DIFF_SSTL12_DCI",
+])
+def test_ddr4_standards_share_1v2_bank(tmp_path, standard):
+    r = run(tmp_path, f"""
+set_property -dict {{LOC AY23 IOSTANDARD {standard}}} [get_ports memory_signal]
+set_property -dict {{LOC BA20 IOSTANDARD LVCMOS12}} [get_ports led]
+""")
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
 def test_rejects_a_pin_that_does_not_exist(tmp_path):
     r = run(tmp_path, "set_property PACKAGE_PIN ZZ999 [get_ports nonsense]\n")
     assert r.returncode == 1

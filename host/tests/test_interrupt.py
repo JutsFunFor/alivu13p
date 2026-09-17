@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from alivu13p import GPIO_DATA2, GPIO_TRI2, GOLDEN_PCIE
+from alivu13p import GPIO_DATA2, GOLDEN_PCIE
 
 pytestmark = pytest.mark.hardware
 
@@ -28,7 +28,6 @@ def test_host_triggered_interrupt(axil, event):
     level, so it is asserted, waited on, and then cleared -- leaving it asserted would
     make every later test see a stale interrupt.
     """
-    axil.write32(GPIO + GPIO_TRI2, 0)      # channel 2 is an output
     axil.write32(GPIO + GPIO_DATA2, 0)     # start deasserted
     try:
         axil.write32(GPIO + GPIO_DATA2, 1)

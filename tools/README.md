@@ -11,6 +11,7 @@ vivado -nojournal -nolog -mode batch -source tools/<script>.tcl -tclargs <args>
 |---|---|---|
 | `jtag_scan.tcl` | — | lists every cable, the devices behind it, and their DONE status |
 | `program.tcl` | `<target> <file.bit> [file.ltx]` | programs a device and checks DONE |
+| `check_ddr4_bist.tcl` | `<target> <ddr4_cal.ltx>` | starts a fresh four-channel memory test; rejects stale results and returns nonzero on failure |
 | `check_ddr4_cal.tcl` | `<target>` | per-channel DDR4 calibration status |
 
 ## Why the target is never defaulted

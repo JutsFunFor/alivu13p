@@ -32,9 +32,9 @@ lspci -d 10ee: -nn                                  # is it there at all
 sudo lspci -d 10ee: -vv | grep -E 'LnkCap:|LnkSta:' # what did it negotiate
 ```
 
-Expect `LnkSta: Speed 8GT/s, Width x16` for a Gen3 x16 design. A width lower than
-`LnkCap` means lanes failed to train; a speed lower than capability usually means signal
-integrity or a refclk problem.
+Expect `LnkSta: Speed 8GT/s, Width x16` for a Gen3 x16 design. Compare both endpoint and upstream-port capabilities before diagnosing a lower
+width or speed. On this workstation the endpoint advertises x16 but the upstream
+PEX 8747 port supports only x8, so Gen3 x8 is the expected result.
 
 **Presence-detect can lie.** On hosts with a PCIe switch (a PLX PEX 8747, for example)
 downstream ports may report `PresDet-` even with a working card behind them, so
@@ -105,6 +105,9 @@ reaching for if reboots alone do not help.
 
 **Check `resource` or `dmesg`, not just `lspci`.** A device with no BARs is listed exactly
 like a working one.
+
+The 2026-09-17 warm reboot resolved this case: both BARs were allocated, and all
+10 PCIe host tests passed. See the [validation record](validation-2026-09-17.md).
 
 ## Address maps are per-design
 

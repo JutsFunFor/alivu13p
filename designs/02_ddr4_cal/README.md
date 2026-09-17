@@ -17,6 +17,10 @@ vivado -nojournal -nolog -mode batch -source ../../tools/jtag_scan.tcl
 vivado -nojournal -nolog -mode batch -source ../../tools/program.tcl \
        -tclargs <target> output_ddr4_cal_<date>/ddr4_cal.bit
 
+# memory test -- requires a freshly programmed DDR4 design
+vivado -nojournal -nolog -mode batch -source ../../tools/check_ddr4_bist.tcl \
+       -tclargs <target> output_ddr4_cal_<date>/ddr4_cal.ltx
+
 # calibration only -- works on any design containing a MIG, no .ltx needed
 vivado -nojournal -nolog -mode batch -source ../../tools/check_ddr4_cal.tcl \
        -tclargs <target>
@@ -74,8 +78,8 @@ memory can produce would leave no trace.
 
 ## Memory configuration
 
-72 bits wide with ECC, which is how the board is populated — eight x16 devices for data
-plus one more for check bits. Enabling ECC forces the data mask off (`NO_DM_NO_DBI`): the
+72 bits wide with ECC, which is how the board is populated — 64 data bits
+plus eight check bits. Enabling ECC forces the data mask off (`NO_DM_NO_DBI`): the
 controller cannot mask part of a write and maintain check bits over it.
 
 That setting changes what the controller *drives*, not the port list. `c*_ddr4_dm_dbi_n`
