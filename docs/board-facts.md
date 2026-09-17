@@ -74,7 +74,34 @@ JTAG: every channel reports `CALIBRATION_FAIL.STATUS = FALSE`, failing stage `NO
 skipped. The skipped stages are the DBI, VREF-training and multi-rank ones, which this
 configuration does not use — a skip there is normal, not a partial result.
 
-Reproduce it with:
+### The controller configuration that calibrates
+
+Taken from the reference design that was verified above, so this is a known-good set
+rather than a plausible one:
+
+| Parameter | Value |
+|---|---|
+| Memory part | `MT40A512M16HA-083E`, components, 1.2 V |
+| Data width | 72, **ECC enabled** |
+| Data mask | `NO_DM_NO_DBI` |
+| CAS latency / CAS write latency | 16 / 12 |
+| Input clock period | 2499 ps (≈400 MHz on `c*_sys_clk_p`) |
+| PHY clock ratio | 4:1 |
+| AXI data / address / ID width | 512 / 32 / 1 |
+| Address mapping | `ROW_COLUMN_BANK` |
+| ODT / output impedance | RZQ/6 / RZQ/7 |
+| Burst | length 8, sequential, `RD_PRI_REG` arbitration |
+
+Note the interaction between the last two rows of the memory configuration: **enabling
+ECC forces `NO_DM_NO_DBI`**, so the controller has no data-mask ports at all. The DM pins
+are physically routed on this board and are recorded in `xdc/ddr4_c[0-3].xdc`, but
+commented out — constraining a port that does not exist costs a critical warning per pin
+and buys nothing. Uncomment them only for a non-ECC build.
+
+The reference clock is per channel and runs at ~400 MHz, which is distinct from the
+100 MHz board clock on AY23.
+
+Reproduce the calibration check with:
 
 ```bash
 vivado -nojournal -nolog -mode batch -source tools/check_ddr4_cal.tcl -tclargs <target>
