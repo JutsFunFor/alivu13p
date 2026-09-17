@@ -114,6 +114,43 @@ calibration is observable even in a design containing no ILA.
 That result also validates the pin assignment itself: these exact pins drive four working
 memory channels on this board.
 
+## PCIe reference clock — measured
+
+Measured with `designs/00_clk_probe`, which counts twelve candidate reference clocks at
+once against the 100 MHz board clock (2026-09-17).
+
+| Pin (P/N) | Bank / refclk | Measured | Reading |
+|---|---|---|---|
+| AW9 / AW8 | 224 MGTREFCLK0 | 0 | no clock |
+| **AV11 / AV10** | **224 MGTREFCLK1** | **100.0016 MHz** | **live** |
+| AT11 / AT10 | 225 MGTREFCLK0 | 0 | no clock |
+| AP11 / AP10 | 225 MGTREFCLK1 | 2.03 MHz | noise, see below |
+| AM11 / AM10 | 226 MGTREFCLK0 | 0 | no clock |
+| **AK11 / AK10** | **226 MGTREFCLK1** | **100.0016 MHz** | **live** |
+| AH11 / AH10 | 227 MGTREFCLK0 | 99.846 MHz | live, different source |
+| AF11 / AF10 | 227 MGTREFCLK1 | 294.9 MHz | noise, see below |
+
+**`AK11`/`AK10` and `AV11`/`AV10` carry the 100 MHz PCIe reference clock.** Their counts
+are identical to the cycle, so this is one oscillator fanned out to two quads rather than
+two independent sources — which is how a x16 endpoint gets a reference into every quad it
+spans.
+
+`AH11` reads 99.846 MHz, 0.15% low, so it is a genuinely different source rather than the
+same clock. Worth identifying before relying on it.
+
+Two candidates report implausible values: 2.03 MHz and 294.9 MHz. An unconnected
+differential GT input is not held anywhere, so its buffer output drifts and oscillates,
+and a frequency counter dutifully counts the result. Read those as "nothing connected",
+not as a clock. It is the reason this design carries controls.
+
+### Trusting the measurement
+
+Four of the twelve probes are controls, not unknowns: two reference clocks already known
+to carry 161.13 MHz and two known to be dead. All four read exactly as expected
+(161.132 / 161.135 MHz and zero), which is what makes the other eight readings credible.
+A probe design without controls cannot distinguish "this pin is dead" from "my counter is
+broken".
+
 ## JTAG — check which board you are talking to
 
 `get_hw_targets` can return several cables, and `[lindex [get_hw_targets] 0]` is only
@@ -136,7 +173,6 @@ then silently does not work.
 
 | Signal group | Pins needed | How to establish |
 |---|---|---|
-| PCIe refclk | 1 diff pair | Constrained by the device: a x16 endpoint can only use the GTY quads wired to its block location, and the refclk must be one of that quad's `MGTREFCLK` pins. That narrows it to a few candidates; the link training is the pass/fail test |
 | PCIe PERST | 1 | Probe, or infer from which candidate lets the endpoint come out of reset |
 | PCIe link LED | 1 | Drive each candidate and look at the board |
 | User LEDs | 8 | Drive each candidate and look at the board |

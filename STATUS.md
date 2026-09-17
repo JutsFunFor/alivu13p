@@ -31,8 +31,9 @@ Test hardware on hand: one Xilinx Platform Cable USB II, one passive QSFP28 DAC 
 | Optical / AOC modules | 🚫 | — | only a passive DAC is available. DACs link regardless of ResetL, so the module-control path cannot be proven here |
 | System clock 100 MHz (AY23/BA23) | ✅ | `designs/03_qsfp_ibert` | drives the IBERT debug hub; design builds and meets timing |
 | PCIe Gen3 x16 (XDMA) | ❌ | — | design not yet written |
-| PCIe refclk pin | ❓ | — | narrowed to 8 candidates by the device (banks 224-227 × MGTREFCLK0/1). `AK11`/`AK10` = `MGTREFCLK1P/N_226` is one. Needs measuring |
+| PCIe reference clock | ✅ | `designs/00_clk_probe` | `AK11`/`AK10` (bank 226 MGTREFCLK1) measured at 100.0016 MHz; `AV11`/`AV10` carries the same oscillator (2026-09-17) |
 | PCIe PERST / link LED pins | ❓ | — | must be probed on hardware |
+| Reference-clock probe | ✅ | `designs/00_clk_probe` | 12 candidates measured at once; 4 known-state controls all read as predicted. WNS +7.109 ns, 0 critical warnings |
 | BRAM over DMA | ❌ | — | — |
 | URAM over DMA | ❌ | — | — |
 | DDR4 channels 0-3 calibrate | ✅ | vendor reference bitstream | all 4 MIGs: `CALIBRATION_FAIL.STATUS=FALSE`, stage `NONE`, 15 stages PASS / 12 SKIP, "No errors detected during calibration" (2026-09-17) |
