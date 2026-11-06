@@ -43,6 +43,13 @@ when setup or hold timing fails.
 
 ## Hardware test
 
+> **Known defect (hardware run 2026-11-06):** transfers touching DDR `0x0-0x3F`
+> hang the DMA engine and the ECC-event bit latches; see `STATUS.md`. DMA from
+> `0x40` upward round-trips correctly. `test_pcie_ddr4.py` hangs on its first
+> write until this is fixed. Recover a hung engine by reprogramming, not by
+> repeated PCIe bus resets.
+
+
 Swapping the bitstream underneath a live PCIe endpoint is the part that
 bites. The host must let go of the device *before* it stops existing:
 

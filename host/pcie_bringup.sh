@@ -9,6 +9,10 @@
 #                                board can be reprogrammed over JTAG without the host
 #                                holding a device that is about to stop existing
 #   ./pcie_bringup.sh attach   - the reverse: rescan, then load
+#   ./pcie_bringup.sh realloc  - enumerated but BAR0/BAR1 unassigned: resize the
+#                                bridge windows without rebooting (pcie_realloc.py;
+#                                other devices behind the same root port drop out
+#                                briefly -- run it detached if that is your network)
 #
 # The FPGA must already be configured (JTAG or QSPI) before the host will see it.
 # A device that was not configured when the host booted usually needs a WARM
@@ -37,7 +41,17 @@ do_rescan() {
     echo "== after =="
     if find_dev | grep -q .; then
         find_dev
-        echo "OK: device enumerated."
+        # Presence is not usability: a device behind a full bridge window enumerates
+        # with no memory, and XDMA then fails with "Failed to detect XDMA config BAR".
+        for slot in $(lspci -d 10ee: -D | cut -d' ' -f1); do
+            if awk 'NR<=2 && $1 ~ /^0x0+$/ {bad=1} END {exit bad}' "/sys/bus/pci/devices/$slot/resource"; then
+                echo "OK: $slot enumerated with BAR0/BAR1 assigned."
+            else
+                echo "FAIL: $slot enumerated but BAR0/BAR1 are unassigned."
+                echo "Bridge windows are too small; try: sudo $REPO/host/pcie_realloc.py --dry-run"
+                return 1
+            fi
+        done
     else
         echo "No Xilinx device found."
         echo "The FPGA must be configured BEFORE the host enumerates PCIe."
@@ -118,5 +132,6 @@ case "${1:-all}" in
     all)    do_rescan; do_load; do_test ;;
     detach) do_detach ;;
     attach) do_rescan; do_load ;;
-    *) sed -n '2,16p' "$0"; exit 1 ;;
+    realloc) shift; sudo "$REPO/host/pcie_realloc.py" "$@" ;;
+    *) sed -n '2,20p' "$0"; exit 1 ;;
 esac
